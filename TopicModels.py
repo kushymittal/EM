@@ -9,6 +9,9 @@ from sklearn.cluster import KMeans
 from scipy.spatial import distance
 import timeit
 
+# Graphs
+import matplotlib.pyplot as plt
+
 num_documents = 1500
 num_words = 12419
 
@@ -92,12 +95,36 @@ def m_step(p, pi, w, docs):
 
 	return p, pi
 
+def print_frequent_words_idx(p):
+	# Read in the vociabulary
+	vocab = pandas.read_csv("vocab.nips.txt", header = None)
+
+	for j in range(num_topics):
+		
+		words = (-p[j]).argsort()[:10]
+
+		print "\n-------------- X -----------"
+		print "Topic: ", j
+
+		for k in range(10):
+			print vocab[0][words[k]], 
+
+		print "\n-------------- X -----------\n"
+
+	return
+	
+def topic_prob_graph(pi):
+	topics = list(range(num_topics))
+
+	plt.plot(topics, pi, "o", color="Teal")
+	plt.xlabel("Topics")
+	plt.ylabel("Probabilities")
+	plt.show()
+
+	return
 
 def main():
 	p_start = timeit.default_timer()
-
-	# Read in the vociabulary
-	#vocab = pandas.read_csv("vocab.nips.txt", header = None)
 
 	# Read in the bag of words representation
 	words = pandas.read_csv("docword.nips.txt", skiprows = [0, 1, 2], sep = ' ', dtype = numpy.int32).as_matrix()
@@ -149,6 +176,12 @@ def main():
 			break
 
 		q_old = q_new
+
+	# Print common words for each topic
+	print_frequent_words_idx(p)
+
+	# Make a graph for the prob for each topic
+	topic_prob_graph(pi)
 
 	p_stop = timeit.default_timer()
 	print "Program Runtime: ", p_stop - p_start, " seconds \n\n"
