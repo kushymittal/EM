@@ -5,13 +5,17 @@ import math
 # For kmeans
 from sklearn.cluster import KMeans
 
+# Metrics
+from scipy.spatial import distance
+import timeit
+
 num_documents = 1500
 num_words = 12419
 
 # Number of clusters
 num_topics = 30
 
-def get_model_parameters(docs):
+def get_initial_model_parameters(docs):
 	p = numpy.array([numpy.array([float(0) for j in range(num_words+1)]) for i in range(num_topics)])
 	pi = numpy.array([float(0) for i in range(num_topics)])
 
@@ -52,30 +56,54 @@ def e_step(p, pi, docs):
 
 	# Compute w matrix
 	for i in range(len(w)):
-		m = max(w[i])
-			
-		w[i] = numpy.power(w[i] - m, math.e)
+		w[i] = numpy.exp(w[i] - max(w[i]))
+
+		assert (w[i].any() == 1)
+
 		w[i] = w[i]/float(sum(w[i]))
 
 	# Compute the Q value
-	print numpy.sum(numpy.multiply(z, w))
+	q = numpy.sum(numpy.multiply(z, w))
 
-	return p, pi, w
+	return p, pi, w, q
 
 def m_step(p, pi, w, docs):
+	
 	# Recompute p vectors
+	for j in range(num_topics):
+		
+		#temp = numpy.copy(p[j])
+		
+		p[j][p[j] != 0] = 0
+		assert (p[j].all() == 0)
+		
+		d = 0
+		
+		for i in range(num_documents+1):
+			p[j] = p[j] + (w[i][j] * docs[i])
+			d = d + sum(docs[i])*w[i][j]
 
-	for i in range(num_documents+1)
+		p[j] = p[j] / d
+
+		#print "P difference: ", distance.euclidean(temp, p[j])
+
+	# Recompute pi vectors
+	pi = numpy.sum(w, axis = 0) / (num_documents + 1)
+
+	return p, pi
+
 
 def main():
+	p_start = timeit.default_timer()
+
 	# Read in the vociabulary
-	vocab = pandas.read_csv("vocab.nips.txt", header = None)
+	#vocab = pandas.read_csv("vocab.nips.txt", header = None)
 
 	# Read in the bag of words representation
 	words = pandas.read_csv("docword.nips.txt", skiprows = [0, 1, 2], sep = ' ', dtype = numpy.int32).as_matrix()
 
 	# Store each document as a vector of words, these are our data points
-	docs = numpy.array([(numpy.array([0 for y in range(num_words+1)])) for x in range(num_documents+1)])
+	docs = numpy.array([(numpy.array([float(0) for y in range(num_words+1)])) for x in range(num_documents+1)])
 	for point in words:
 		docs[int(point[0])][int(point[1])] = float(point[2])
 
@@ -83,15 +111,48 @@ def main():
 
 	# p[i][j] represents the probability that word j is in topic i
 	# pi[i] represent the probability a given document is in topic i
-	p, pi = get_model_parameters(docs)
+	p, pi = get_initial_model_parameters(docs)
 	
 	# Compute Labels (E step)
-	p, pi, w = e_step(p, pi, docs)
-
-	m_step(p, pi, w, docs)
+	p, pi, w, q_old = e_step(p, pi, docs)
 
 	# Recompute parameters (M Step)
+	p, pi = m_step(p, pi, w, docs)
 	
+	num_iterations = 0
+
+	print "\n-------------- X -----------"
+	print "Iteration: ", num_iterations
+	print "Q: ", q_old
+	print "-------------- X -----------\n"
+
+	while True:
+		num_iterations += 1
+		print "\n-------------- X -----------"
+		print "Iteration: ", num_iterations
+
+		e_start = timeit.default_timer()
+		p, pi, w, q_new = e_step(p, pi, docs)
+		e_stop = timeit.default_timer()
+		print "Q: ", q_new
+		print "E Step Time: ", (e_stop - e_start), " seconds"
+
+		m_start = timeit.default_timer()
+		p, pi = m_step(p, pi, w, docs)
+		m_stop = timeit.default_timer()
+		print "M Step Time: ", (m_stop - m_start), " seconds"
+		print "-------------- X -----------\n"
+
+		# Check for convergence
+		delta_q = abs(float(q_new) - q_old)/q_old
+		if  delta_q <= 0.01:
+			break
+
+		q_old = q_new
+
+	p_stop = timeit.default_timer()
+	print "Program Runtime: ", p_stop - p_start, " seconds \n\n"
+
 	
 if __name__ == '__main__':
 	main()
