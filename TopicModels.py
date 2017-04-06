@@ -70,7 +70,7 @@ def e_step(p, pi, docs):
 
 	return p, pi, w, q
 
-def m_step(p, pi, w, docs):
+def m_step_slow(p, pi, w, docs):
 	
 	# Recompute p vectors
 	for j in range(num_topics):
@@ -95,6 +95,24 @@ def m_step(p, pi, w, docs):
 
 	return p, pi
 
+def m_step(p, pi, w, docs):
+
+	x_sums = numpy.sum(docs, axis = 1)
+
+	w_t = numpy.transpose(w)
+
+	p = numpy.dot(w_t, docs)
+
+	fac = numpy.dot(w_t, x_sums)
+
+	for j in range(len(p)):
+		p[j] = p[j]/fac[j]
+
+	# Recompute pi vectors
+	pi = numpy.sum(w, axis = 0) / (num_documents + 1)
+
+	return p, pi
+
 def print_frequent_words_idx(p):
 	# Read in the vociabulary
 	vocab = pandas.read_csv("vocab.nips.txt", header = None)
@@ -107,7 +125,7 @@ def print_frequent_words_idx(p):
 		print "Topic: ", j
 
 		for k in range(10):
-			print vocab[0][words[k]], 
+			print vocab[0][words[k]]
 
 		print "\n-------------- X -----------\n"
 
@@ -171,8 +189,8 @@ def main():
 		print "-------------- X -----------\n"
 
 		# Check for convergence
-		delta_q = abs(float(q_new) - q_old)/q_old
-		if  delta_q <= 0.01:
+		delta_q = abs(float(q_new) - q_old)#/q_old
+		if  delta_q <= 0.00001:
 			break
 
 		q_old = q_new
@@ -181,9 +199,10 @@ def main():
 	print_frequent_words_idx(p)
 
 	# Make a graph for the prob for each topic
-	topic_prob_graph(pi)
+	#topic_prob_graph(pi)
 
 	p_stop = timeit.default_timer()
+	print "Number of Iterations for Convergence: ", num_iterations
 	print "Program Runtime: ", p_stop - p_start, " seconds \n\n"
 
 	
