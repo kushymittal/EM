@@ -48,8 +48,10 @@ def get_initial_model_parameters(docs):
 	return p, pi
 
 def e_step(p, pi, docs):
+	p [p == 0] = 0.0001
+
 	# Compute z vectors
-	z = numpy.dot(docs, numpy.transpose(p))
+	z = numpy.dot(docs, numpy.transpose(numpy.log(p)))
 
 	for i in range(len(z)):
 		for j in range(len(z[0])):
@@ -190,7 +192,7 @@ def main():
 
 		# Check for convergence
 		delta_q = abs(float(q_new) - q_old)#/q_old
-		if  delta_q <= 0.00001:
+		if  delta_q <= 10:
 			break
 
 		q_old = q_new
@@ -199,7 +201,7 @@ def main():
 	print_frequent_words_idx(p)
 
 	# Make a graph for the prob for each topic
-	#topic_prob_graph(pi)
+	topic_prob_graph(pi)
 
 	p_stop = timeit.default_timer()
 	print "Number of Iterations for Convergence: ", num_iterations
@@ -208,3 +210,4 @@ def main():
 	
 if __name__ == '__main__':
 	main()
+
